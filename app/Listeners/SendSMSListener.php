@@ -27,6 +27,7 @@ class SendSMSListener implements ShouldQueue
      */
     public function handle(SendSMS $event)
     {
+        \Log::info('SendSMS|'.$event->phone.'|'.json_encode($event->templates).'|'.json_encode($event->tempData));
         PhpSms::make()->to($event->phone)->template($event->templates)->data($event->tempData)->send();
     }
 }
