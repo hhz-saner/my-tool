@@ -42,7 +42,7 @@ return [
     /*
      * Use `https`.
      */
-    'secure' => true,
+    'secure' => env('USE_HTTPS'),
 
     /*
      * Laravel-admin auth setting.

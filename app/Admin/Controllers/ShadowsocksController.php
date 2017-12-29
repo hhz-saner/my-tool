@@ -29,6 +29,37 @@ class ShadowsocksController extends AdminController
     }
 
     /**
+     * Edit interface.
+     *
+     * @param $id
+     * @return Content
+     */
+    public function edit($id)
+    {
+        return Admin::content(function (Content $content) use ($id) {
+            $content->header('影梭账号');
+            $content->description('修改');
+            $content->body($this->form($id)->edit($id));
+        });
+    }
+
+
+    /**
+     * Create interface.
+     *
+     * @return Content
+     */
+    public function create()
+    {
+        return Admin::content(function (Content $content) {
+            $content->header('影梭账号');
+            $content->description('创建');
+            $content->body($this->form());
+        });
+    }
+
+
+    /**
      * Make a grid builder.
      *
      * @return Grid
@@ -52,20 +83,7 @@ class ShadowsocksController extends AdminController
         });
     }
 
-    /**
-     * Edit interface.
-     *
-     * @param $id
-     * @return Content
-     */
-    public function edit($id)
-    {
-        return Admin::content(function (Content $content) use ($id) {
-            $content->header('影梭账号');
-            $content->description('修改');
-            $content->body($this->form($id)->edit($id));
-        });
-    }
+
 
     /**
      * Make a form builder.
@@ -89,19 +107,7 @@ class ShadowsocksController extends AdminController
         });
     }
 
-    /**
-     * Create interface.
-     *
-     * @return Content
-     */
-    public function create()
-    {
-        return Admin::content(function (Content $content) {
-            $content->header('影梭账号');
-            $content->description('创建');
-            $content->body($this->form());
-        });
-    }
+
 
     public function destroy($id)
     {

@@ -3,6 +3,7 @@
 namespace App\Console;
 
 use App\Console\Commands\AboutClassNotify;
+use App\Console\Commands\GetProxy;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -14,7 +15,8 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
-      AboutClassNotify::class
+        AboutClassNotify::class,
+        GetProxy::class,
     ];
 
     /**
@@ -26,6 +28,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command(AboutClassNotify::class)->everyMinute();
+        $schedule->command( GetProxy::class)->everyTenMinutes();
         // $schedule->command('inspire')
         //          ->hourly();
     }

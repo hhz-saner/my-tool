@@ -16,5 +16,7 @@ Route::group([
     $router->resource('/aboutClass', 'AboutClassController')->except('edit','update');
     $router->get('/shadowsocks/unusedPort/{port?}', 'ShadowsocksController@unusedPort')->name('shadowsocks.unusedPort');
     $router->resource('/shadowsocks', 'ShadowsocksController');
+    $router->resource('/projects', 'ProjectController');
+    $router->resource('/project/users', 'ProjectUserController')->name('index','project.users');
 
 });

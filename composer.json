@@ -9,6 +9,7 @@
         "encore/laravel-admin": "^1.5",
         "fideloper/proxy": "~3.3",
         "guzzlehttp/guzzle": "~6.0",
+        "jaeger/querylist": "^4.0",
         "laravel-admin-ext/config": "^1.0",
         "laravel-admin-ext/helpers": "^1.0",
         "laravel-admin-ext/log-viewer": "^1.0",

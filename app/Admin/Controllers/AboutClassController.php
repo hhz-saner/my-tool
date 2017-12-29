@@ -90,7 +90,7 @@ class AboutClassController extends AdminController
             $grid->column('id', 'ID');
             $grid->column('date', '日期')->sortable();
             $grid->column('class', '课程');
-            $grid->created_at()->sortable();
+            $grid->created_at('创建时间')->sortable();
             $grid->actions(function ($actions) {
                 $actions->disableEdit();
             });
