@@ -31,8 +31,8 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command(AboutClassNotify::class)->everyMinute()->withoutOverlapping();
-        $schedule->command(GetProxy::class)->everyThirtyMinutes()->withoutOverlapping();;
-        $schedule->command(Aliexpress::class)->everyMinute()->withoutOverlapping();;
+        $schedule->command(GetProxy::class)->everyThirtyMinutes()->withoutOverlapping();
+        $schedule->command(Aliexpress::class)->everyMinute()->withoutOverlapping();
         // $schedule->command('inspire')
         //          ->hourly();
     }

@@ -6,8 +6,11 @@ use App\Models\Proxy;
 use Cache;
 use App\Models\ExtAliexpress;
 use GuzzleHttp\Client;
+use GuzzleHttp\Pool;
 use GuzzleHttp\Promise;
+use GuzzleHttp\Psr7\Request;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class Aliexpress extends Command
@@ -56,11 +59,9 @@ class Aliexpress extends Command
     public function __construct(Client $client)
     {
         $this->client = $client;
-        $proxy = Cache::get('proxy_list');
-        if (empty($proxy)) {
-            $proxy = Proxy::where('status', 1)->orderBy('time')->take(50)->get();
-        }
-        $this->proxy = $proxy;
+        $this->proxy = Cache::remember('proxy_list',600,function(){
+            return Proxy::where('status', 1)->orderBy('time')->take(50)->get();
+        });
         parent::__construct();
     }
 
@@ -73,28 +74,46 @@ class Aliexpress extends Command
     {
         $extAliexpress = ExtAliexpress::where('status', 0)->get();
         $client = new Client();
-        $promises = [];
-        foreach ($extAliexpress as $value) {
-            $useProxy = $this->proxy->random();
-            $promises[$value->id] = $client->getAsync('https://ru.aliexpress.com/wholesale?SearchText=' . $value->name,[
-                'headers' => [
-                    'User-Agent' => $this->userAgent[array_rand($this->userAgent)],
-                ],
-                'proxy' => [
-                    'http' => 'tcp://' . $useProxy['ip'] . ':' . $useProxy['port'], // Use this proxy with "http"
-                    'https' => 'tcp://' . $useProxy['ip'] . ':' . $useProxy['port'],
-                ]
-            ]);
-        }
-        $results = Promise\unwrap($promises);
-        foreach ($results as $key => $result) {
-            $arr = [];
-            $pattern = "/\"enKeyword\":\".*?\"/i";
-            if (preg_match($pattern, $result->getBody()->getContents(), $arr)) {
-                $enKeyword = str_replace('"', '', explode(':', $arr[0])[1]);
-                \Log::info($enKeyword);
-                ExtAliexpress::find($key)->update(['status'=>1,'en_keyword'=>$enKeyword]);
+        $requests = function ($extAliexpress) use ($client) {
+            foreach ($extAliexpress as $value) {
+                yield function () use ($client, $value) {
+                    $useProxy = $this->proxy->random();
+                    return $client->getAsync('https://ru.aliexpress.com/wholesale?SearchText=' . $value->name, [
+                        'headers' => [
+                            'User-Agent' => $this->userAgent[array_rand($this->userAgent)],
+                        ],
+                        'proxy' => [
+                            'http' => 'tcp://' . $useProxy['ip'] . ':' . $useProxy['port'], // Use this proxy with "http"
+                            'https' => 'tcp://' . $useProxy['ip'] . ':' . $useProxy['port'],
+                        ],
+                        'connect_timeout' => 5,
+                        'timeout' => 10
+                    ]);
+                };
             }
+        };
+        try {
+            $pool = new Pool($client, $requests($extAliexpress), [
+                'concurrency' => 5,
+                'fulfilled' => function ($response, $index) use ($extAliexpress) {
+                    $arr = [];
+                    $pattern = "/\"enKeyword\":\".*?\"/i";
+                    $contents = $response->getBody()->getContents();
+                    if (preg_match($pattern, $contents, $arr)) {
+                        $enKeyword = str_replace('"', '', explode(':', $arr[0])[1]);
+                        $extAliexpress[$index]->update(['status' => 1, 'en_keyword' => $enKeyword]);
+                    }
+                },
+                'rejected' => function ($reason, $index) {
+                    // this is delivered each failed request
+                },
+            ]);
+            // Initiate the transfers and create a promise
+            $promise = $pool->promise();
+            // Force the pool of requests to complete.
+            $promise->wait();
+        } catch (\Exception $e) {
+
         }
     }
 }
