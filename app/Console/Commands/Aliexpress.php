@@ -6,6 +6,7 @@ use App\Models\Proxy;
 use Cache;
 use App\Models\ExtAliexpress;
 use GuzzleHttp\Client;
+use GuzzleHttp\Promise;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -16,7 +17,7 @@ class Aliexpress extends Command
      *
      * @var string
      */
-    protected $signature = 'command:aliexpress';
+    protected $signature = 'aliexpress';
 
     /**
      * The console command description.
@@ -49,6 +50,7 @@ class Aliexpress extends Command
     /**
      * Create a new command instance.
      *
+     * @param \GuzzleHttp\Client $client
      * @return void
      */
     public function __construct(Client $client)
@@ -70,23 +72,11 @@ class Aliexpress extends Command
     public function handle()
     {
         $extAliexpress = ExtAliexpress::where('status', 0)->get();
+        $client = new Client();
+        $promises = [];
         foreach ($extAliexpress as $value) {
-            $enKeyword = $this->getEnKeyword($value->name);
-            if ($enKeyword != false) {
-                $enKeyword = $this->getEnKeyword($value->name);
-                \Log::info($enKeyword);
-                $value->en_keyword = $enKeyword;
-                $value->status = 1;
-                $value->save();
-            }
-        }
-    }
-
-    private function getEnKeyword($name)
-    {
-        $useProxy = $this->proxy->random();
-        try {
-            $response = $this->client->get('https://ru.aliexpress.com/wholesale?SearchText=' . $name, [
+            $useProxy = $this->proxy->random();
+            $promises[$value->id] = $client->getAsync('https://ru.aliexpress.com/wholesale?SearchText=' . $value->name,[
                 'headers' => [
                     'User-Agent' => $this->userAgent[array_rand($this->userAgent)],
                 ],
@@ -95,18 +85,16 @@ class Aliexpress extends Command
                     'https' => 'tcp://' . $useProxy['ip'] . ':' . $useProxy['port'],
                 ]
             ]);
-            $pattern = "/\"enKeyword\":\".*?\"/i";
+        }
+        $results = Promise\unwrap($promises);
+        foreach ($results as $key => $result) {
             $arr = [];
-            if (preg_match($pattern, $response->getBody()->getContents(), $arr)) {
-                $arr = str_replace('"', '', explode(':', $arr[0])[1]);
+            $pattern = "/\"enKeyword\":\".*?\"/i";
+            if (preg_match($pattern, $result->getBody()->getContents(), $arr)) {
+                $enKeyword = str_replace('"', '', explode(':', $arr[0])[1]);
                 \Log::info($enKeyword);
-                return $arr;
-            } else {
-                return false;
+                ExtAliexpress::find($key)->update(['status'=>1,'en_keyword'=>$enKeyword]);
             }
-        } catch (\Exception $e) {
-            return false;
         }
     }
-
 }
