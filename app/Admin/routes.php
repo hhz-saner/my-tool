@@ -19,4 +19,9 @@ Route::group([
     $router->resource('/projects', 'ProjectController');
     $router->resource('/project/users', 'ProjectUserController')->name('index','project.users');
 
+    $router->resource('/aliexpress', 'Ext\AliexpressController');
+
+
+
+
 });

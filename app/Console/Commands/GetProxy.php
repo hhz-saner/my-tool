@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Proxy;
+use GuzzleHttp\Client;
 use Illuminate\Console\Command;
 use QL\QueryList;
 use Illuminate\Support\Facades\Cache;
@@ -13,7 +15,7 @@ class GetProxy extends Command
      *
      * @var string
      */
-    protected $signature = 'command:getProxy';
+    protected $signature = 'getProxy';
 
     /**
      * The console command description.
@@ -39,24 +41,53 @@ class GetProxy extends Command
      */
     public function handle()
     {
-
-        $data = collect([]);
-        for ($i = 1; $i < 5; $i++) {
-            $data = $data->merge($this->getProxy($i));
+        Proxy::where('status', 1)->update(['status' => 0]);
+        for ($i = 1; $i <= 10; $i++) {
+            $this->getProxy($i);
         }
-        $data =  $data->sortBy('time')->values()->all();
-        Cache::put('proxy_ip_list', $data, 10);
+        $proxy = Proxy::where('status', 1)->orderBy('time')->take(50)->get();
+        if (!empty($proxy)) {
+            Cache::put('proxy_list', $proxy, 600);
+        }
     }
 
     public function getProxy(int $page)
     {
-        return QueryList::get('https://proxy.coderbusy.com/zh-cn/classical/https-ready/p' . $page . '.aspx')
+        QueryList::get('https://proxy.coderbusy.com/zh-cn/classical/https-ready/p' . $page . '.aspx')
             ->find('tbody tr')->map(function ($value) {
                 return [
                     'ip' => $value->find('td:eq(0)')->text(),
-                    'proxy' => $value->find('td:eq(1)')->text(),
+                    'port' => $value->find('td:eq(1)')->text(),
                     'time' => str_replace('秒', '', $value->find('td:eq(9)')->text()),
                 ];
+            })->filter(function ($value) {
+                return $value['time'] < 5;
+            })->each(function ($value) {
+                if ($contents = $this->test($value)) {
+                    Proxy::create(array_merge($value, ['description' => $contents]));
+                }
             });
+    }
+
+    public function test($proxy)
+    {
+        $client = new Client();
+        try {
+            $response = $client->get('http://myip.ipip.net/', [
+                'proxy' => [
+                    'http' => 'tcp://' . $proxy['ip'] . ':' . $proxy['port'], // Use this proxy with "http"
+                    'https' => 'tcp://' . $proxy['ip'] . ':' . $proxy['port']
+                ],
+                'connect_timeout' => 3,
+                'timeout' => 3
+            ]);
+            $contents = $response->getBody()->getContents();
+            if (strpos($contents, $proxy['ip']) === false) {
+                return false;
+            }
+            return $contents;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }

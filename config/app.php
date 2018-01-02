@@ -168,6 +168,7 @@ return [
          * Package Service Providers...
          */
         Toplan\PhpSms\PhpSmsServiceProvider::class,
+        Maatwebsite\Excel\ExcelServiceProvider::class,
         /*
          * Application Service Providers...
          */
@@ -226,7 +227,7 @@ return [
         'Validator' => Illuminate\Support\Facades\Validator::class,
         'View' => Illuminate\Support\Facades\View::class,
         'PhpSms' => Toplan\PhpSms\Facades\Sms::class,
-
+        'Excel' => Maatwebsite\Excel\Facades\Excel::class,
     ],
 
 ];
